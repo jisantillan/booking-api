@@ -2,6 +2,7 @@ package model
 
 import (
 	"booking-api/db"
+	"fmt"
 	"log"
 	"time"
 )
@@ -84,4 +85,53 @@ func GetAllEvents() ([]Event, error) {
 	}
 
 	return events, nil
+}
+
+func GetEventByID(id int64) (*Event, error) {
+	query := `SELECT id, name, description, location, datetime, user_id FROM events WHERE id = ?`
+
+	var event Event
+	err := db.DB.QueryRow(query, id).Scan(
+		&event.ID,
+		&event.Name,
+		&event.Description,
+		&event.Location,
+		&event.DateTime,
+		&event.UserID,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return &event, nil
+}
+
+func UpdateEventByID(id int64, event Event) (*Event, error) {
+	query := `UPDATE events
+			  SET name = ?, description = ?, location = ?, datetime = ?
+			  WHERE id = ?`
+	stmt, err := db.DB.Prepare(query)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	defer stmt.Close()
+
+	// Use Exec when the query changes db status
+	result, err := stmt.Exec(event.Name, event.Description, event.Location, event.DateTime, id)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return nil, err
+	}
+	if rows == 0 {
+		return nil, fmt.Errorf("no se encontró el evento con id %d", id)
+	}
+
+	event.ID = id
+	return &event, nil
 }
